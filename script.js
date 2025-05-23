@@ -1,56 +1,70 @@
-// 糸のアニメーション
-window.addEventListener('scroll', () => {
-  const path = document.querySelector('.thread path');
-  const scrollTop = window.scrollY;
-  const docHeight = document.body.scrollHeight - window.innerHeight;
-  const drawLength = 1000 - (scrollTop / docHeight) * 1000;
-  path.style.strokeDashoffset = drawLength;
+(() => {
+  const canvas = document.getElementById('threadCanvas');
+  const ctx = canvas.getContext('2d');
 
-  const glow = Math.max(0.2, 1 - scrollTop / docHeight);
-  path.style.filter = `drop-shadow(0 0 5px rgba(229, 169, 184, ${glow * 0.4}))`;
-});
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
 
-// キラキラ粒子
-const canvas = document.getElementById("sparkle-canvas");
-const ctx = canvas.getContext("2d");
-let particles = [];
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
-
-function createParticle() {
-  return {
-    x: Math.random() * canvas.width,
-    y: Math.random() * canvas.height,
-    size: Math.random() * 2.2 + 0.5,
-    opacity: Math.random() * 0.5 + 0.3,
-    speedY: Math.random() * 0.3 + 0.1,
-    lifespan: Math.random() * 150 + 100
-  };
-}
-
-function animate() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  particles.forEach((p, i) => {
-    p.y -= p.speedY;
-    p.lifespan--;
-    if (p.lifespan <= 0 || p.y < 0) {
-      particles[i] = createParticle();
-      particles[i].y = canvas.height;
+  class Sparkle {
+    constructor(x, y, size, speedY) {
+      this.x = x;
+      this.y = y;
+      this.size = size;
+      this.speedY = speedY;
+      this.alpha = Math.random() * 0.5 + 0.3;
+      this.alphaDir = Math.random() < 0.5 ? 1 : -1;
     }
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255, 245, 250, ${p.opacity})`;
-    ctx.fill();
-  });
-  requestAnimationFrame(animate);
-}
+    update() {
+      this.y += this.speedY;
+      if (this.y > window.scrollY + window.innerHeight + 10) {
+        this.y = window.scrollY - 10;
+      }
+      this.alpha += 0.01 * this.alphaDir;
+      if (this.alpha > 0.8) this.alphaDir = -1;
+      if (this.alpha < 0.3) this.alphaDir = 1;
+    }
+    draw(ctx) {
+      const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+      gradient.addColorStop(0, `rgba(255,255,255,${this.alpha})`);
+      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
-for (let i = 0; i < 150; i++) {
-  particles.push(createParticle());
-}
-animate();
+  let sparkles = [];
+  function generateSparkles() {
+    sparkles = [];
+    const count = 50;
+    for(let i=0; i<count; i++) {
+      const x = Math.random() * canvas.width;
+      const y = window.scrollY + Math.random() * window.innerHeight;
+      const size = Math.random() * 1.5 + 0.5;
+      const speedY = 0.3 + Math.random() * 0.3;
+      sparkles.push(new Sparkle(x, y, size, speedY));
+    }
+  }
+  generateSparkles();
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    sparkles.forEach(sparkle => {
+      sparkle.update();
+      sparkle.draw(ctx);
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+
+  window.addEventListener('scroll', () => {});
+  window.addEventListener('resize', () => {
+    generateSparkles();
+    resize();
+  });
+})();
