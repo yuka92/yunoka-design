@@ -1,19 +1,139 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>結の華デザイン - ご縁の糸</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>縦断するキラキラ糸のイメージ</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 200vh; /* 縦長ページを想定 */
+    background: #111; /* 黒に近いダーク背景 */
+    overflow-x: hidden;
+  }
+  canvas#threadCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    pointer-events: none; /* クリック透過 */
+    z-index: 9999;
+  }
+</style>
 </head>
 <body>
-  <canvas id="sparkle-canvas"></canvas>
-  <div class="scroll-container">
-    <svg class="thread" viewBox="0 0 500 100">
-      <path d="M0,50 C150,0 350,100 500,50" />
-    </svg>
-    <div class="spacer"></div>
-  </div>
-  <script src="script.js"></script>
+
+<canvas id="threadCanvas"></canvas>
+
+<script>
+(() => {
+  const canvas = document.getElementById('threadCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // サイズ調整
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // 縦線の本数と位置を決める
+  const lineCount = 5;
+  let linePositions = [];
+
+  function calcLinePositions() {
+    linePositions = [];
+    const spacing = canvas.width / (lineCount + 1);
+    for(let i=1; i<=lineCount; i++) {
+      linePositions.push(i * spacing);
+    }
+  }
+  calcLinePositions();
+
+  // キラキラ粒子クラス
+  class Sparkle {
+    constructor(x, y, size, speedY) {
+      this.x = x;
+      this.y = y;
+      this.size = size;
+      this.speedY = speedY;
+      this.alpha = Math.random() * 0.5 + 0.3;
+      this.alphaDir = Math.random() < 0.5 ? 1 : -1;
+    }
+    update() {
+      this.y += this.speedY;
+      if (this.y > window.scrollY + window.innerHeight + 10) {
+        this.y = window.scrollY - 10;
+      }
+      // ゆらゆらと明るさ変化
+      this.alpha += 0.01 * this.alphaDir;
+      if (this.alpha > 0.8) this.alphaDir = -1;
+      if (this.alpha < 0.3) this.alphaDir = 1;
+    }
+    draw(ctx) {
+      const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+      gradient.addColorStop(0, `rgba(255,255,255,${this.alpha})`);
+      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 粒子を生成
+  let sparkles = [];
+
+  function generateSparkles() {
+    sparkles = [];
+    linePositions.forEach(xPos => {
+      // 各線に約10粒子ずつ
+      for(let i=0; i<10; i++) {
+        const y = window.scrollY + Math.random() * window.innerHeight;
+        const size = Math.random() * 1.5 + 0.5;
+        const speedY = 0.3 + Math.random() * 0.3;
+        sparkles.push(new Sparkle(xPos, y, size, speedY));
+      }
+    });
+  }
+  generateSparkles();
+
+  // 描画ループ
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 線を描く
+    ctx.strokeStyle = 'rgba(200, 200, 255, 0.3)';
+    ctx.lineWidth = 1;
+    linePositions.forEach(xPos => {
+      ctx.beginPath();
+      ctx.moveTo(xPos, window.scrollY);
+      ctx.lineTo(xPos, window.scrollY + window.innerHeight);
+      ctx.stroke();
+    });
+
+    // 粒子を描く
+    sparkles.forEach(sparkle => {
+      sparkle.update();
+      sparkle.draw(ctx);
+    });
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+
+  // スクロール時に位置調整
+  window.addEventListener('scroll', () => {
+    // Sparkleのy位置はupdateでスクロールに追従しているので特別な処理不要
+  });
+
+  // リサイズ時に線の位置を再計算
+  window.addEventListener('resize', () => {
+    calcLinePositions();
+    generateSparkles();
+  });
+
+})();
+</script>
+
 </body>
 </html>
